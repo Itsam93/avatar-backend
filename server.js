@@ -8,6 +8,7 @@ import fs from "fs";
 // ROUTES
 import submissionRoutes from "./routes/submissionRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
 
 dotenv.config();
 
@@ -104,6 +105,7 @@ app.use("/processed", express.static(processedDir));
 // ==========================
 app.use("/api/admin", adminRoutes);
 app.use("/api/submissions", submissionRoutes);
+app.use("/api/upload", uploadRoutes);
 
 // ==========================
 // HEALTH CHECK

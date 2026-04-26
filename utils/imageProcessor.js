@@ -75,3 +75,18 @@ export const processImage = async (file) => {
     throw new Error("Image processing failed");
   }
 };
+
+
+export const optimizeImage = async (inputPath) => {
+  const outputPath = inputPath.replace("uploads", "processed");
+
+  await sharp(inputPath)
+    .resize(2000, 2000, {
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .jpeg({ quality: 85 })
+    .toFile(outputPath);
+
+  return outputPath;
+};
