@@ -19,11 +19,14 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
 
-// Frontend domains 
-const CLIENT_URLS = [
+// ==========================
+// FRONTEND ORIGINS
+// ==========================
+const allowedOrigins = [
   "http://localhost:5173",
   "https://avatar-generator-peach.vercel.app",
   "https://nwz1-bibles-avatar.online",
+  "https://www.nwz1-bibles-avatar.online",
 ];
 
 // ==========================
@@ -34,7 +37,9 @@ if (!MONGO_URI) {
   process.exit(1);
 }
 
-
+// ==========================
+// FILE DIRECTORIES
+// ==========================
 const uploadDir = path.join(process.cwd(), "uploads");
 const processedDir = path.join(process.cwd(), "processed");
 
@@ -42,24 +47,37 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 if (!fs.existsSync(processedDir)) fs.mkdirSync(processedDir);
 
 // ==========================
-// CORS CONFIG 
+// CORS CONFIG (FIXED)
 // ==========================
 app.use(
   cors({
     origin: function (origin, callback) {
-      // allow requests with no origin (mobile apps, curl, postman)
+      // Allow tools like Postman / server-to-server
       if (!origin) return callback(null, true);
 
-      if (CLIENT_URLS.includes(origin)) {
+      if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
 
-      return callback(new Error("CORS not allowed"), false);
+      console.log("❌ Blocked CORS request from:", origin);
+
+      return callback(new Error("Not allowed by CORS"));
     },
-    credentials: true,
+
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Accept",
+      "Origin",
+    ],
+
+    credentials: true,
   })
 );
+
+app.options(/.*/, cors());
 
 // ==========================
 // BODY PARSERS
@@ -68,7 +86,7 @@ app.use(express.json({ limit: "15mb" }));
 app.use(express.urlencoded({ extended: true, limit: "15mb" }));
 
 // ==========================
-// REQUEST LOGGER (DEBUG)
+// REQUEST LOGGER
 // ==========================
 app.use((req, res, next) => {
   console.log(`➡️ ${req.method} ${req.url}`);
@@ -78,11 +96,7 @@ app.use((req, res, next) => {
 // ==========================
 // STATIC FILES
 // ==========================
-
-// Uploaded raw files
 app.use("/uploads", express.static(uploadDir));
-
-// Processed avatar output
 app.use("/processed", express.static(processedDir));
 
 // ==========================
@@ -123,7 +137,6 @@ const connectDB = async () => {
 app.use((err, req, res, next) => {
   console.error("SERVER ERROR:", err);
 
-  // Multer file size error
   if (err.code === "LIMIT_FILE_SIZE") {
     return res.status(400).json({
       success: false,
@@ -131,7 +144,6 @@ app.use((err, req, res, next) => {
     });
   }
 
-  // CORS error
   if (err.message && err.message.includes("CORS")) {
     return res.status(403).json({
       success: false,
@@ -153,7 +165,7 @@ const startServer = async () => {
 
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-    console.log(`Allowed frontend: ${CLIENT_URLS.join(", ")}`);
+    console.log(`Allowed origins: ${allowedOrigins.join(", ")}`);
   });
 };
 
