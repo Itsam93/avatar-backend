@@ -44,36 +44,37 @@ if (!MONGO_URI) {
 const uploadDir = path.join(process.cwd(), "uploads");
 const processedDir = path.join(process.cwd(), "processed");
 
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
-if (!fs.existsSync(processedDir)) fs.mkdirSync(processedDir);
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+  console.log("📁 Created uploads directory");
+}
+
+if (!fs.existsSync(processedDir)) {
+  fs.mkdirSync(processedDir);
+  console.log("📁 Created processed directory");
+}
 
 // ==========================
-// CORS CONFIG (FIXED)
+// CORS CONFIG (DEBUG ENABLED)
 // ==========================
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow tools like Postman / server-to-server
+      console.log("🌐 Incoming Origin:", origin);
+
       if (!origin) return callback(null, true);
 
       if (allowedOrigins.includes(origin)) {
+        console.log("✅ CORS ALLOWED:", origin);
         return callback(null, true);
       }
 
-      console.log("❌ Blocked CORS request from:", origin);
-
+      console.log("❌ CORS BLOCKED:", origin);
       return callback(new Error("Not allowed by CORS"));
     },
 
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "Accept",
-      "Origin",
-    ],
-
+    allowedHeaders: ["Content-Type", "Authorization", "Accept", "Origin"],
     credentials: true,
   })
 );
@@ -87,10 +88,16 @@ app.use(express.json({ limit: "15mb" }));
 app.use(express.urlencoded({ extended: true, limit: "15mb" }));
 
 // ==========================
-// REQUEST LOGGER
+// REQUEST LOGGER (ENHANCED)
 // ==========================
 app.use((req, res, next) => {
-  console.log(`➡️ ${req.method} ${req.url}`);
+  console.log("\n==============================");
+  console.log("📥 REQUEST INCOMING");
+  console.log("➡️ Method:", req.method);
+  console.log("➡️ URL:", req.url);
+  console.log("➡️ Origin:", req.headers.origin);
+  console.log("==============================\n");
+
   next();
 });
 
@@ -101,19 +108,43 @@ app.use("/uploads", express.static(uploadDir));
 app.use("/processed", express.static(processedDir));
 
 // ==========================
-// ROUTES
+// ROUTE LOAD DEBUG (CRITICAL)
+// ==========================
+
+console.log("\n🔍 LOADING ROUTES...");
+
+console.log("submissionRoutes:", typeof submissionRoutes);
+console.log("adminRoutes:", typeof adminRoutes);
+console.log("uploadRoutes:", typeof uploadRoutes);
+
+// THIS IS THE MOST IMPORTANT DEBUG LINE
+app.use("/api/upload", (req, res, next) => {
+  console.log("🔥 HIT /api/upload BASE ROUTE");
+  next();
+}, uploadRoutes);
+
+// ==========================
+// OTHER ROUTES
 // ==========================
 app.use("/api/admin", adminRoutes);
 app.use("/api/submissions", submissionRoutes);
-app.use("/api/upload", uploadRoutes);
 
 // ==========================
 // HEALTH CHECK
 // ==========================
 app.get("/", (req, res) => {
+  console.log("❤️ HEALTH CHECK HIT");
   res.json({
     status: "OK",
     message: "Avatar Backend Running 🚀",
+  });
+});
+
+// TEST ROUTE FOR DEBUGGING
+app.get("/test-upload-route", (req, res) => {
+  res.json({
+    ok: true,
+    message: "Upload route base is reachable",
   });
 });
 
@@ -122,6 +153,8 @@ app.get("/", (req, res) => {
 // ==========================
 const connectDB = async () => {
   try {
+    console.log("🔌 Connecting to MongoDB...");
+
     await mongoose.connect(MONGO_URI, {
       dbName: "avatar_db",
     });
@@ -137,7 +170,9 @@ const connectDB = async () => {
 // GLOBAL ERROR HANDLER
 // ==========================
 app.use((err, req, res, next) => {
-  console.error("SERVER ERROR:", err);
+  console.error("\n❌ SERVER ERROR:");
+  console.error("Message:", err.message);
+  console.error(err.stack);
 
   if (err.code === "LIMIT_FILE_SIZE") {
     return res.status(400).json({
@@ -166,8 +201,10 @@ const startServer = async () => {
   await connectDB();
 
   app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Allowed origins: ${allowedOrigins.join(", ")}`);
+    console.log("\n🚀 SERVER STARTED");
+    console.log("Port:", PORT);
+    console.log("Allowed origins:", allowedOrigins.join(", "));
+    console.log("Upload route expected at: /api/upload/image");
   });
 };
 

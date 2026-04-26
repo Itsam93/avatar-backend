@@ -31,6 +31,10 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // SINGLE ENTRY POINT
-router.post("/image", upload.single("image"), processImage);
+router.post("/image", (req, res, next) => {
+  console.log("📥 UPLOAD ROUTE HIT");
+  next();
+}, upload.single("image"), processImage);
+
 
 export default router;
