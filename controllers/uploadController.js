@@ -5,9 +5,17 @@ import heicConvert from "heic-convert";
 
 export const processImage = async (req, res) => {
   try {
+    console.log("⚙️ PROCESS IMAGE STARTED");
+
     if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
+      console.log("❌ No file received");
+      return res.status(400).json({
+        success: false,
+        message: "No file uploaded",
+      });
     }
+
+    console.log("📥 FILE RECEIVED:", req.file.filename);
 
     const filePath = req.file.path;
     const fileBuffer = fs.readFileSync(filePath);
@@ -16,11 +24,11 @@ export const processImage = async (req, res) => {
     let outputBuffer = fileBuffer;
 
     // ==========================
-    // HEIC / HEIF CONVERSION
+    // HEIC CONVERSION
     // ==========================
-    const isHeic = ext === ".heic" || ext === ".heif";
+    if (ext === ".heic" || ext === ".heif") {
+      console.log("🔄 Converting HEIC → JPEG");
 
-    if (isHeic) {
       const converted = await heicConvert({
         buffer: fileBuffer,
         format: "JPEG",
@@ -31,24 +39,28 @@ export const processImage = async (req, res) => {
     }
 
     // ==========================
-    // FORCE STANDARDIZATION 
+    // NORMALIZE IMAGE
     // ==========================
     const finalImage = await sharp(outputBuffer)
-      .rotate() 
+      .rotate()
       .jpeg({ quality: 90 })
       .toBuffer();
 
     // ==========================
-    // OVERWRITE FILE AS JPEG
+    // SAFE OUTPUT PATH
     // ==========================
+    const uploadsDir = path.join(process.cwd(), "uploads");
+
     const newFilename =
       Date.now() + "-" + Math.round(Math.random() * 1e9) + ".jpg";
 
-    const finalPath = path.join("uploads", newFilename);
+    const finalPath = path.join(uploadsDir, newFilename);
 
     fs.writeFileSync(finalPath, finalImage);
 
-    // delete original raw upload
+    console.log("✅ IMAGE SAVED:", finalPath);
+
+    // cleanup
     fs.unlinkSync(filePath);
 
     return res.status(200).json({
@@ -57,10 +69,12 @@ export const processImage = async (req, res) => {
       filename: newFilename,
     });
   } catch (err) {
-    console.error("PROCESS IMAGE ERROR:", err);
+    console.error("❌ PROCESS IMAGE ERROR:", err);
+
     return res.status(500).json({
       success: false,
       message: "Image processing failed",
+      error: err.message,
     });
   }
 };

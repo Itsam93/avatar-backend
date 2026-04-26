@@ -6,17 +6,25 @@ import { processImage } from "../controllers/uploadController.js";
 
 const router = express.Router();
 
-// ensure upload folder exists 
-const uploadDir = "uploads";
+// ==========================
+// ABSOLUTE SAFE PATH (CRITICAL FIX)
+// ==========================
+const uploadDir = path.join(process.cwd(), "uploads");
+
 if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
+  fs.mkdirSync(uploadDir, { recursive: true });
+  console.log("📁 Upload directory created:", uploadDir);
 }
 
-
+// ==========================
+// MULTER STORAGE
+// ==========================
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
+    console.log("📂 Saving file to:", uploadDir);
     cb(null, uploadDir);
   },
+
   filename: (req, file, cb) => {
     const uniqueName =
       Date.now() +
@@ -24,17 +32,30 @@ const storage = multer.diskStorage({
       Math.round(Math.random() * 1e9) +
       path.extname(file.originalname);
 
+    console.log("📄 Incoming file:", file.originalname);
+    console.log("🆔 Generated filename:", uniqueName);
+
     cb(null, uniqueName);
   },
 });
 
 const upload = multer({ storage });
 
-// SINGLE ENTRY POINT
-router.post("/image", (req, res, next) => {
-  console.log("📥 UPLOAD ROUTE HIT");
-  next();
-}, upload.single("image"), processImage);
-
+// ==========================
+// ROUTE DEBUG LAYER
+// ==========================
+router.post(
+  "/image",
+  (req, res, next) => {
+    console.log("📥 ROUTE HIT: /api/upload/image");
+    next();
+  },
+  upload.single("image"),
+  (req, res, next) => {
+    console.log("📦 MULTER DONE, FILE READY");
+    next();
+  },
+  processImage
+);
 
 export default router;
